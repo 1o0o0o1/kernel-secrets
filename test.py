@@ -34,6 +34,10 @@ def set_index():
     command = f'echo "{index}" > /proc/secret/set_index'
     subprocess.run(command, shell=True)
     
+def write_secret(data):
+    command = f'echo "{data}" > /proc/secret/set_index'
+    subprocess.run(command, shell=True)
+
 def read_secret():
     command = f'cat > /proc/secret/read'
     subprocess.run(command, shell=True)
@@ -53,7 +57,8 @@ def prompt():
             index = input("Enter index > ")
             set_index()
         elif(choose == 2):
-            pass
+            data = input("Enter data > ")
+            write_secret(data)
         elif(choose == 3):
             read_secret()
         elif (choose == 4):
