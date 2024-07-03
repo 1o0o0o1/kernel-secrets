@@ -160,13 +160,6 @@ static ssize_t secret_write(struct file *file, const char __user *buf,
     my_secret_table.secret[_index] = secret;
     pr_info("Successful writing secret whith index %d\n", _index);
 
-    char s[14] = "Hello World!\n";
-    int lenw = sizeof(s);
-    if(copy_to_user(buf, s, lenw)){
-        pr_info("copy_to_user failed\n");
-        ret = SUCCESS;
-    }
-
     return len;
 }
 static ssize_t secret_delete(struct file *file, char __user *buf, 
