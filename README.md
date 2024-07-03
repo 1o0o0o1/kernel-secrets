@@ -20,8 +20,6 @@ At the moment, all information is output to the dmesg kernel log. You should che
 ### Manual method:
 ```shell
 # set index 0
-echo "0" > /proc/secret/s
-# set index 0
 echo "0" > /proc/secret/set_index
 
 # write some data to secret whith index 0
