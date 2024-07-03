@@ -12,7 +12,7 @@ def welcome():
           "                                              2. Wirte secret;\n"
           "                                              3. Read secret;\n"
           "    _____                    _                4. Delete secret;\n"
-          "     ___|                  | |                5. Run tests;\n"
+          "     ___|                  | |                5. Run tests(comming soon...);\n"
           "   \ `--.  ___  ___ _ __ ___| |_ ___          \n"
           "    `--. \/ _ \/ __| '__/ _ \ __/ __|         \n"
           "   /\__/ /  __/ (__| | |  __/ |_\__ \         0 - for exit.\n"
