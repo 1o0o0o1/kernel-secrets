@@ -5,11 +5,12 @@
 #include <linux/version.h>
 #include <linux/random.h>
 #include <linux/vmalloc.h>
+#include <linux/slab.h>
 #include <linux/string.h>
 
 #define SUCCESS 0
 
-// Структура для хранения секрета
+// A struct for storing secrets
 struct secret {
     char *data;
     size_t size;
@@ -22,14 +23,15 @@ enum secret_operation_type {
     SECRET_DELETE
 };
 
-// Хэш-таблица для хранения секретов
 #define SECRET_MAX_INDEX 1023
+
+// the number of index digits entered
 #define SECRET_MAX_INPUT_SIZE 4
+
 struct secret_table {
     struct secret *secret[SECRET_MAX_INDEX];
 };
 
-// Глобальная структура для хранения секретов
 static unsigned int _index = 0;
 static struct secret_table my_secret_table;
 
@@ -43,7 +45,7 @@ void free_secret_table(struct secret_table *table) {
     for (int i = 0; i < SECRET_MAX_INDEX + 1; i++) {
         if (table->secret[i] != NULL) {
             vfree(table->secret[i]->data); 
-            vfree(table->secret[i]); 
+            kfree(table->secret[i]); 
         }
     }
 }
@@ -51,6 +53,16 @@ void free_secret_table(struct secret_table *table) {
 static ssize_t check_input(char *input, const char *buf, size_t len,
                         enum secret_operation_type op_type)
 {
+    /*
+    * This function accepts *input and, if it correct, sets it by copying data from *buf. 
+    * 
+    * The op_type argument defines the type of check and sets
+    * criteria for a specific type of operation.
+    * For example, in the case of SECRET_SET_INDEX,
+    * it is checked that the input does not exceed SECRET_MAX_INPUT_SIZE 
+    *
+    */
+
     if(len == 0){
         pr_err("Error: data cannot be empty\n");
         return -ENODATA;
@@ -77,6 +89,11 @@ static ssize_t check_input(char *input, const char *buf, size_t len,
 
 static ssize_t check_index(unsigned int index, enum secret_operation_type op_type)
 {
+
+    /*
+    * This function checks the index and access to data for this index. 
+    */
+
     if (index > SECRET_MAX_INDEX) {
         pr_err("Error: index is out of range 0 to %d!\n", SECRET_MAX_INDEX);
         return -EINVAL;
@@ -133,22 +150,23 @@ static ssize_t secret_write(struct file *file, const char __user *buf,
     if(ret = check_index(_index, SECRET_WRITE))
         return ret;
 
-    struct secret *secret = vmalloc(sizeof(struct secret));
+    struct secret *secret = kmalloc(sizeof(struct secret), GFP_KERNEL);
     if(!secret){
         pr_err("Error: cannot allocate memory for secret\n");
-        vfree(secret);
+        kfree(secret);
         return -ENOMEM;
     }
     secret->data = vmalloc(len);
     if(!secret->data) {
-        vfree(secret);
+        vfree(secret->data);
+        kfree(secret);
 
-        pr_err("Error: cannot allocate memory for secret->data\n");
+        pr_err("Error: cannot allocate memory for secret data\n");
         return -ENOMEM;
     }
     if(copy_from_user(secret->data, buf, len)) {
         vfree(secret->data);
-        vfree(secret);
+        kfree(secret);
 
         pr_err("Error: copy form userspace to kernelspace is failed\n");
         return -EFAULT;
@@ -170,7 +188,7 @@ static ssize_t secret_delete(struct file *file, char __user *buf,
        return ret;
 
     vfree(my_secret_table.secret[_index]->data);
-    vfree(my_secret_table.secret[_index]);
+    kfree(my_secret_table.secret[_index]);
     my_secret_table.secret[_index] = NULL;
 
     pr_info("Secret with index %d success deleted\n", _index);
@@ -232,10 +250,6 @@ static int __init procfs2_init(void)
     delete_file = proc_create(PROCFS_SECRET_DELETE_FILE, 0220, proc_dir, &secret_delete_fops);
 
     if ((proc_dir == NULL) || (setter_file == NULL) || (read_file == NULL) || (write_file == NULL) || (delete_file == NULL)) {
-        if (proc_dir == NULL) {
-            proc_remove(proc_dir);
-            pr_err("Error: Could not initialize /proc/%s\n", PROCFS_DIR);
-        }
         if(setter_file == NULL) {
             proc_remove(setter_file);
             pr_err("Error: Could not initialize /proc/%s/%s\n", PROCFS_DIR, PROCFS_SECRET_SETTER_FILE);
@@ -252,8 +266,11 @@ static int __init procfs2_init(void)
             proc_remove(delete_file);
             pr_err("Error: Could not initialize /proc/%s/%s\n", PROCFS_DIR, PROCFS_SECRET_DELETE_FILE);
         }
-
-        return -ENOMEM;
+        if (proc_dir == NULL) {
+            proc_remove(proc_dir);
+            pr_err("Error: Could not initialize /proc/%s\n", PROCFS_DIR);
+        }
+        return -ENOENT;
     }
 
     pr_info("Directory /proc/%s created\n", PROCFS_DIR);
