@@ -2,7 +2,8 @@
 
 - [ ] Replace the current structure for storing secrets with a hash table;
 - [ ] Add test to ksecrets.py;
-- [ ] Sub-task or description;   
+- [ ] Sub-task or description;
+- [ ] Add queues to eliminate race condition situations
 
 ### Done ✓
 
